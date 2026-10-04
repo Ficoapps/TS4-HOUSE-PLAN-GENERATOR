@@ -156,6 +156,127 @@
     return {name:'Piano unico',rooms,exterior:ext,W,H,level:0,front:'bottom'};
   }
 
+
+  function sideLength(q,side){return (side==='top'||side==='bottom')?q.w:q.h;}
+  function overlap(a1,a2,b1,b2){return Math.max(0,Math.min(a2,b2)-Math.max(a1,b1));}
+  function sharedWall(a,b){
+    const eps=.15;
+    if(Math.abs((a.x+a.w)-b.x)<eps){const o=overlap(a.y,a.y+a.h,b.y,b.y+b.h);if(o>1.15)return {aSide:'right',bSide:'left',start:Math.max(a.y,b.y),len:o};}
+    if(Math.abs(a.x-(b.x+b.w))<eps){const o=overlap(a.y,a.y+a.h,b.y,b.y+b.h);if(o>1.15)return {aSide:'left',bSide:'right',start:Math.max(a.y,b.y),len:o};}
+    if(Math.abs((a.y+a.h)-b.y)<eps){const o=overlap(a.x,a.x+a.w,b.x,b.x+b.w);if(o>1.15)return {aSide:'bottom',bSide:'top',start:Math.max(a.x,b.x),len:o};}
+    if(Math.abs(a.y-(b.y+b.h))<eps){const o=overlap(a.x,a.x+a.w,b.x,b.x+b.w);if(o>1.15)return {aSide:'top',bSide:'bottom',start:Math.max(a.x,b.x),len:o};}
+    return null;
+  }
+  function posOnSide(q,side,absolute){
+    const origin=(side==='top'||side==='bottom')?q.x:q.y;
+    return clamp((absolute-origin)/sideLength(q,side),.16,.84);
+  }
+  function exteriorSides(q,rooms,W,H){
+    const eps=.15, sides=[];
+    const candidates=['top','right','bottom','left'];
+    for(const side of candidates){
+      let boundary=false;
+      if(side==='left'&&Math.abs(q.x)<eps)boundary=true;
+      if(side==='right'&&Math.abs(q.x+q.w-W)<eps)boundary=true;
+      if(side==='top'&&Math.abs(q.y)<eps)boundary=true;
+      if(side==='bottom'&&Math.abs(q.y+q.h-H)<eps)boundary=true;
+      if(boundary){sides.push(side);continue;}
+      const hasNeighbor=rooms.some(o=>o!==q&&!o.overlay&&sharedWall(q,o)?.aSide===side);
+      if(!hasNeighbor)sides.push(side);
+    }
+    return sides;
+  }
+  function enhanceOpenings(f,s){
+    const rooms=f.rooms.filter(q=>!q.overlay);
+    const doors=[],windows=[];
+    const doorKeys=new Set(), windowKeys=new Set();
+    const byId=id=>rooms.find(q=>q.id===id);
+    const addDoor=(q,side,pos=.5,width=1.2,kind='single',to=null)=>{
+      if(!q||!side)return;
+      const key=[q.id,side,Math.round(pos*20),kind].join('|');
+      if(doorKeys.has(key))return;
+      doorKeys.add(key);doors.push({roomId:q.id,side,pos:clamp(pos,.12,.88),width,kind,to});
+    };
+    const connect=(a,b,kind='single',width=1.2)=>{
+      if(!a||!b)return false;
+      const sw=sharedWall(a,b);if(!sw)return false;
+      const abs=sw.start+sw.len/2;
+      addDoor(a,sw.aSide,posOnSide(a,sw.aSide,abs),Math.min(width,Math.max(1,sw.len*.55)),kind,b.id);
+      return true;
+    };
+    const addWindows=(q,side,n,width,kind='standard')=>{
+      if(!q||!side||n<1)return;
+      for(let i=0;i<n;i++){
+        const pos=(i+1)/(n+1),key=[q.id,side,i,kind].join('|');
+        if(windowKeys.has(key))continue;
+        windowKeys.add(key);windows.push({roomId:q.id,side,pos,width,kind});
+      }
+    };
+
+    const foyer=rooms.find(q=>q.type==='foyer');
+    if(foyer){
+      const ex=exteriorSides(foyer,rooms,f.W,f.H);
+      const side=ex.includes('bottom')?'bottom':(ex[0]||'bottom');
+      addDoor(foyer,side,.5,foyer.w>5?2:1.5,foyer.w>5?'double':'entry',null);
+    }
+
+    const corridor=rooms.find(q=>q.type==='corridor');
+    const living=rooms.find(q=>q.type==='living');
+    const kitchen=rooms.find(q=>q.type==='kitchen');
+    if(living&&foyer)connect(living,foyer,'double',2);
+    if(kitchen&&foyer)connect(kitchen,foyer,s.openSpace?'opening':'single',s.openSpace?2.6:1.2);
+    if(corridor&&foyer)connect(corridor,foyer,'opening',1.8);
+
+    for(const q of rooms){
+      if(['corridor','foyer','stairs'].includes(q.type))continue;
+      let has=doors.some(d=>d.roomId===q.id);
+      if(!has&&corridor)has=connect(q,corridor,q.type==='living'?'double':'single',q.type==='living'?2:1.2);
+      if(!has&&foyer)has=connect(q,foyer,['living','dining'].includes(q.type)?'double':'single',['living','dining'].includes(q.type)?2:1.2);
+    }
+
+    const bedrooms=rooms.filter(q=>['bedroom','master'].includes(q.type));
+    for(const bed of bedrooms){
+      const wards=rooms.filter(q=>q.type==='wardrobe').sort((a,b)=>Math.hypot((a.x+a.w/2)-(bed.x+bed.w/2),(a.y+a.h/2)-(bed.y+bed.h/2))-Math.hypot((b.x+b.w/2)-(bed.x+bed.w/2),(b.y+b.h/2)-(bed.y+bed.h/2)));
+      const baths=rooms.filter(q=>q.type==='bath').sort((a,b)=>Math.hypot((a.x+a.w/2)-(bed.x+bed.w/2),(a.y+a.h/2)-(bed.y+bed.h/2))-Math.hypot((b.x+b.w/2)-(bed.x+bed.w/2),(b.y+b.h/2)-(bed.y+bed.h/2)));
+      if(wards[0]&&sharedWall(bed,wards[0]))connect(bed,wards[0],'sliding',1.4);
+      if(baths[0]&&sharedWall(bed,baths[0]))connect(bed,baths[0],'single',1.1);
+    }
+
+    const doorless=rooms.filter(q=>!['corridor','foyer','stairs'].includes(q.type)&&!doors.some(d=>d.roomId===q.id));
+    for(const q of doorless){
+      const old=q.door;
+      if(old)addDoor(q,old.side,.5,q.type==='bath'?1:q.type==='wardrobe'?1.4:1.2,q.type==='wardrobe'?'sliding':'single');
+    }
+
+    for(const q of rooms){
+      const ex=exteriorSides(q,rooms,f.W,f.H);
+      if(!ex.length)continue;
+      let preferred=ex[0];
+      if(q.type==='living'){const side=ex.includes('bottom')?'bottom':ex[0];addWindows(q,side,2,3,'wide');if(ex.length>1)addWindows(q,ex[1],1,2.4,'wide');}
+      else if(q.type==='kitchen'){const side=ex.includes('right')?'right':ex[0];addWindows(q,side,2,2,'standard');}
+      else if(q.type==='dining'||q.type==='lounge'){addWindows(q,preferred,1,2.4,'wide');}
+      else if(q.type==='master'){addWindows(q,preferred,2,2.6,'wide');}
+      else if(q.type==='bedroom'){addWindows(q,preferred,1,2.2,'standard');}
+      else if(q.type==='study'){addWindows(q,preferred,1,2.2,'standard');}
+      else if(q.type==='bath'){addWindows(q,preferred,1,1.2,'privacy');}
+      else if(q.type==='laundry'){addWindows(q,preferred,1,1.2,'privacy');}
+      else if(q.type==='garage'){addWindows(q,preferred,1,1.8,'high');}
+    }
+
+    const terraces=f.exterior.filter(q=>['terrace','patio'].includes(q.type));
+    if(terraces.length){
+      for(const q of [living,kitchen,...bedrooms].filter(Boolean)){
+        const ex=exteriorSides(q,rooms,f.W,f.H);
+        const side=ex.includes('bottom')?'bottom':ex.includes('top')?'top':ex[0];
+        if(side&&['living','kitchen','master'].includes(q.type))addDoor(q,side,.76,q.type==='master'?2.2:2.6,'sliding',terraces[0].id);
+      }
+    }
+
+    const garage=f.exterior.find(q=>q.type==='garage');
+    if(garage){addDoor(garage,'bottom',.5,Math.max(4,garage.w*.72),'garage',null);}
+    f.openings={doors,windows};
+  }
+
   function generate(s){
     const {w:W,h:H}=logicalSize(s); const floors=[];
     if(s.floors===1){floors.push(singleFloor(s,W,H));}
@@ -174,6 +295,7 @@
       }
       if(left>0){floors[floors.length-1].notes=`${left} camera/e non rappresentate per limite del template: aumentare piani o lotto.`;}
     }
+    floors.forEach(f=>enhanceOpenings(f,s));
     const usable=floors.reduce((a,f)=>a+f.rooms.filter(x=>!x.overlay).reduce((s,q)=>s+q.w*q.h,0),0);
     const corridor=floors.reduce((a,f)=>a+f.rooms.filter(x=>['corridor','foyer','stairs'].includes(x.type)).reduce((s,q)=>s+q.w*q.h,0),0);
     const areaRatio=usable?corridor/usable:0;
@@ -183,7 +305,8 @@
       graphics:s.renderStyle==='Tecnica'?92:s.renderStyle==='Immobiliare'?96:98,
       sims:clamp(98-(s.shape==='split'?4:0)-(s.floors>3?2:0),88,99)
     };
-    return {settings:s,floors,meta:{W,H,usable:Math.round(usable),corridorRatio:Math.round(areaRatio*100)},audit,created:new Date().toISOString()};
+    const openingCount=floors.reduce((a,f)=>a+(f.openings?.doors.length||0)+(f.openings?.windows.length||0),0);
+    return {settings:s,floors,meta:{W,H,usable:Math.round(usable),corridorRatio:Math.round(areaRatio*100),openingCount},audit,created:new Date().toISOString()};
   }
 
   global.TS4Engine={collectSettings,generate};
