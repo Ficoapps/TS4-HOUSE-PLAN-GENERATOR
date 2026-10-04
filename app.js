@@ -27,7 +27,7 @@
     } else {
       g.append(svgEl('rect',{x,y,width:w,height:h,fill,stroke:'#111','stroke-width':Math.max(5,S*.18),'stroke-linejoin':'miter'}));
     }
-    windows(g,q,x,y,w,h,S,mode); door(g,q,x,y,w,h,S); furniture(g,q,x,y,w,h,S,mode); label(g,q,x,y,w,h,S,mode);
+    furniture(g,q,x,y,w,h,S,mode); label(g,q,x,y,w,h,S,mode);
   }
 
   function label(g,q,x,y,w,h,S,mode){
@@ -59,6 +59,88 @@
     if(d.side==='right'){const cy=y+h*.5;g.append(svgEl('line',{x1:x+w,y1:cy-ds/2,x2:x+w,y2:cy+ds/2,stroke:'#fff','stroke-width':Math.max(6,S*.22)}));leaf=`M${x+w} ${cy-ds/2} L${x+w-ds} ${cy-ds/2}`;path=`M${x+w-ds} ${cy-ds/2} A${ds} ${ds} 0 0 0 ${x+w} ${cy+ds/2}`;}
     if(leaf){g.append(svgEl('path',{d:leaf,stroke:st,'stroke-width':'1.5',fill:'none'}),svgEl('path',{d:path,stroke:st,'stroke-width':'1',fill:'none','stroke-dasharray':'2 2'}));}
   }
+
+  function openingRoom(f,id){return [...f.rooms,...f.exterior].find(q=>q.id===id);}
+  function openingGeom(q,op,S){
+    const x=q.x*S,y=q.y*S,w=q.w*S,h=q.h*S;
+    const side=op.side,pos=Math.max(.08,Math.min(.92,op.pos==null?.5:op.pos)),len=Math.max(S*(op.width||1.2),12);
+    if(side==='top'||side==='bottom'){
+      const cx=x+w*pos,yy=side==='top'?y:y+h;
+      return {side:side,cx:cx,cy:yy,x1:cx-len/2,y1:yy,x2:cx+len/2,y2:yy,len:len};
+    }
+    const cy=y+h*pos,xx=side==='left'?x:x+w;
+    return {side:side,cx:xx,cy:cy,x1:xx,y1:cy-len/2,x2:xx,y2:cy+len/2,len:len};
+  }
+  function drawWindowOpening(g,q,op,S){
+    const z=openingGeom(q,op,S),cut=Math.max(7,S*.27),glass='#567f91',thin=Math.max(1.2,S*.045);
+    g.append(svgEl('line',{x1:z.x1,y1:z.y1,x2:z.x2,y2:z.y2,stroke:'#fff','stroke-width':cut,'stroke-linecap':'butt'}));
+    if(z.side==='top'||z.side==='bottom'){
+      g.append(svgEl('line',{x1:z.x1,y1:z.y1-2.2,x2:z.x2,y2:z.y2-2.2,stroke:glass,'stroke-width':thin}),
+               svgEl('line',{x1:z.x1,y1:z.y1+2.2,x2:z.x2,y2:z.y2+2.2,stroke:glass,'stroke-width':thin}));
+      if(op.kind==='privacy') for(let i=1;i<4;i++){const xx=z.x1+(z.x2-z.x1)*i/4;g.append(svgEl('line',{x1:xx,y1:z.y1-4,x2:xx,y2:z.y1+4,stroke:glass,'stroke-width':'.8',opacity:'.75'}));}
+    } else {
+      g.append(svgEl('line',{x1:z.x1-2.2,y1:z.y1,x2:z.x2-2.2,y2:z.y2,stroke:glass,'stroke-width':thin}),
+               svgEl('line',{x1:z.x1+2.2,y1:z.y1,x2:z.x2+2.2,y2:z.y2,stroke:glass,'stroke-width':thin}));
+      if(op.kind==='privacy') for(let i=1;i<4;i++){const yy=z.y1+(z.y2-z.y1)*i/4;g.append(svgEl('line',{x1:z.x1-4,y1:yy,x2:z.x1+4,y2:yy,stroke:glass,'stroke-width':'.8',opacity:'.75'}));}
+    }
+  }
+  function drawDoorOpening(g,q,op,S){
+    const z=openingGeom(q,op,S),cut=Math.max(8,S*.30),st=op.kind==='entry'?'#6f4c2f':'#80684f',thin=Math.max(1.2,S*.05);
+    g.append(svgEl('line',{x1:z.x1,y1:z.y1,x2:z.x2,y2:z.y2,stroke:'#fff','stroke-width':cut,'stroke-linecap':'butt'}));
+    if(op.kind==='opening') return;
+    if(op.kind==='garage'){
+      g.append(svgEl('line',{x1:z.x1,y1:z.y1,x2:z.x2,y2:z.y2,stroke:st,'stroke-width':Math.max(3,S*.10)}));
+      const n=5;
+      for(let i=1;i<n;i++){
+        const t=i/n;
+        if(z.side==='top'||z.side==='bottom'){const xx=z.x1+(z.x2-z.x1)*t;g.append(svgEl('line',{x1:xx,y1:z.y1-4,x2:xx,y2:z.y1+4,stroke:'#b49d87','stroke-width':'1'}));}
+        else {const yy=z.y1+(z.y2-z.y1)*t;g.append(svgEl('line',{x1:z.x1-4,y1:yy,x2:z.x1+4,y2:yy,stroke:'#b49d87','stroke-width':'1'}));}
+      }
+      return;
+    }
+    if(op.kind==='sliding'){
+      if(z.side==='top'||z.side==='bottom'){
+        const yy=z.y1;g.append(svgEl('line',{x1:z.x1,y1:yy-2.5,x2:z.cx+3,y2:yy-2.5,stroke:st,'stroke-width':thin}),
+        svgEl('line',{x1:z.cx-3,y1:yy+2.5,x2:z.x2,y2:yy+2.5,stroke:st,'stroke-width':thin}));
+      } else {
+        const xx=z.x1;g.append(svgEl('line',{x1:xx-2.5,y1:z.y1,x2:xx-2.5,y2:z.cy+3,stroke:st,'stroke-width':thin}),
+        svgEl('line',{x1:xx+2.5,y1:z.cy-3,x2:xx+2.5,y2:z.y2,stroke:st,'stroke-width':thin}));
+      }
+      return;
+    }
+    const half=op.kind==='double'?z.len/2:z.len;
+    const drawLeaf=(hingeX,hingeY,endX,endY,arc)=>{
+      g.append(svgEl('line',{x1:hingeX,y1:hingeY,x2:endX,y2:endY,stroke:st,'stroke-width':thin}));
+      g.append(svgEl('path',{d:arc,fill:'none',stroke:st,'stroke-width':Math.max(.8,S*.032),opacity:'.8'}));
+    };
+    if(z.side==='bottom'){
+      if(op.kind==='double'){
+        drawLeaf(z.x1,z.cy,z.x1,z.cy-half,'M'+z.x1+' '+(z.cy-half)+' A'+half+' '+half+' 0 0 1 '+z.cx+' '+z.cy);
+        drawLeaf(z.x2,z.cy,z.x2,z.cy-half,'M'+z.x2+' '+(z.cy-half)+' A'+half+' '+half+' 0 0 0 '+z.cx+' '+z.cy);
+      } else drawLeaf(z.x1,z.cy,z.x1,z.cy-z.len,'M'+z.x1+' '+(z.cy-z.len)+' A'+z.len+' '+z.len+' 0 0 1 '+z.x2+' '+z.cy);
+    } else if(z.side==='top'){
+      if(op.kind==='double'){
+        drawLeaf(z.x1,z.cy,z.x1,z.cy+half,'M'+z.x1+' '+(z.cy+half)+' A'+half+' '+half+' 0 0 0 '+z.cx+' '+z.cy);
+        drawLeaf(z.x2,z.cy,z.x2,z.cy+half,'M'+z.x2+' '+(z.cy+half)+' A'+half+' '+half+' 0 0 1 '+z.cx+' '+z.cy);
+      } else drawLeaf(z.x1,z.cy,z.x1,z.cy+z.len,'M'+z.x1+' '+(z.cy+z.len)+' A'+z.len+' '+z.len+' 0 0 0 '+z.x2+' '+z.cy);
+    } else if(z.side==='right'){
+      if(op.kind==='double'){
+        drawLeaf(z.cx,z.y1,z.cx-half,z.y1,'M'+(z.cx-half)+' '+z.y1+' A'+half+' '+half+' 0 0 0 '+z.cx+' '+z.cy);
+        drawLeaf(z.cx,z.y2,z.cx-half,z.y2,'M'+(z.cx-half)+' '+z.y2+' A'+half+' '+half+' 0 0 1 '+z.cx+' '+z.cy);
+      } else drawLeaf(z.cx,z.y1,z.cx-z.len,z.y1,'M'+(z.cx-z.len)+' '+z.y1+' A'+z.len+' '+z.len+' 0 0 0 '+z.cx+' '+z.y2);
+    } else {
+      if(op.kind==='double'){
+        drawLeaf(z.cx,z.y1,z.cx+half,z.y1,'M'+(z.cx+half)+' '+z.y1+' A'+half+' '+half+' 0 0 1 '+z.cx+' '+z.cy);
+        drawLeaf(z.cx,z.y2,z.cx+half,z.y2,'M'+(z.cx+half)+' '+z.y2+' A'+half+' '+half+' 0 0 0 '+z.cx+' '+z.cy);
+      } else drawLeaf(z.cx,z.y1,z.cx+z.len,z.y1,'M'+(z.cx+z.len)+' '+z.y1+' A'+z.len+' '+z.len+' 0 0 1 '+z.cx+' '+z.y2);
+    }
+  }
+  function drawOpenings(g,f,S){
+    const o=f.openings||{doors:[],windows:[]};
+    for(const w of o.windows){const q=openingRoom(f,w.roomId);if(q)drawWindowOpening(g,q,w,S);}
+    for(const d of o.doors){const q=openingRoom(f,d.roomId);if(q)drawDoorOpening(g,q,d,S);}
+  }
+
   function furniture(g,q,x,y,w,h,S,mode){const ink=mode==='Tecnica'?'#777':'#8b7d70';const fill=mode==='Tecnica'?'#fff':'#f5f0e8';const sw=1.2;
     const rect=(rx,ry,rw,rh,extra={})=>g.append(svgEl('rect',{x:rx,y:ry,width:rw,height:rh,fill,stroke:ink,'stroke-width':sw,...extra}));
     const line=(x1,y1,x2,y2)=>g.append(svgEl('line',{x1,y1,x2,y2,stroke:ink,'stroke-width':sw}));
@@ -106,17 +188,18 @@
     f.exterior.forEach(q=>drawRoom(g,q,S,0,0,mode));
     f.rooms.filter(q=>!q.overlay).forEach(q=>drawRoom(g,q,S,0,0,mode));
     f.rooms.filter(q=>q.overlay).forEach(q=>{const x=q.x*S,y=q.y*S,w=q.w*S,h=q.h*S;g.append(svgEl('rect',{x,y,width:w,height:h,fill:'none',stroke:'#6a6258','stroke-width':'1','stroke-dasharray':'4 3'}));});
+    drawOpenings(g,f,S);
     // north/front indicator and graphic scale
     g.append(svgEl('text',{x:0,y:-18,'font-size':'10',fill:'#666'},`FRONTE PRINCIPALE ↓   |   ${f.name}`));
     g.append(svgEl('line',{x1:0,y1:f.H*S+28,x2:6*S,y2:f.H*S+28,stroke:'#222','stroke-width':'3'}));g.append(svgEl('text',{x:3*S,y:f.H*S+42,'text-anchor':'middle','font-size':'9',fill:'#555'},'6 caselle TS4'));
   }
 
   function renderSummary(){const s=$('#summary');s.innerHTML='';const a=project.audit,m=project.meta,st=project.settings;[
-    ['Lotto',`${st.lot.w} × ${st.lot.h}`],['Piani',project.floors.length],['Superficie logica',`${m.usable} caselle²`],['Distribuzione',`${a.distribution}/100`],['Compatibilità TS4',`${a.sims}/100`]
+    ['Lotto',`${st.lot.w} × ${st.lot.h}`],['Piani',project.floors.length],['Superficie logica',`${m.usable} caselle²`],['Aperture',m.openingCount||0],['Distribuzione',`${a.distribution}/100`],['Compatibilità TS4',`${a.sims}/100`]
   ].forEach(([k,v])=>{const c=el('div','stat');c.innerHTML=`<b>${v}</b><span>${k}</span>`;s.append(c);});
   }
   function renderTabs(){const t=$('#floorTabs');t.innerHTML='';project.floors.forEach((f,i)=>{const b=el('button',i===activeFloor?'active':'',f.name);b.onclick=()=>{activeFloor=i;renderTabs();drawFloor(project.floors[i]);};t.append(b);});}
-  function renderLegend(){const l=$('#legend');l.innerHTML='';[['#d9ba8d','Zona abitabile / legno'],['#ece8df','Bagni / cucina'],['#dfddd6','Distribuzione'],['#d3d1c9','Esterni'],['#a9d7e4','Acqua']].forEach(([c,n])=>{const s=el('span');s.innerHTML=`<i style="background:${c}"></i>${n}`;l.append(s);});}
+  function renderLegend(){const l=$('#legend');l.innerHTML='';[['#d9ba8d','Zona abitabile / legno'],['#ece8df','Bagni / cucina'],['#dfddd6','Distribuzione'],['#d3d1c9','Esterni'],['#a9d7e4','Acqua'],['#567f91','Finestre'],['#80684f','Porte / scorrevoli']].forEach(([c,n])=>{const s=el('span');s.innerHTML=`<i style="background:${c}"></i>${n}`;l.append(s);});}
   function renderAudit(){const g=$('#guidelines');const a=project.audit;g.innerHTML='<h3>Controllo del progetto</h3>';const grid=el('div','audit');[['Qualità distributiva',a.distribution],['Architettura residenziale',a.architecture],['Qualità grafica',a.graphics],['Compatibilità The Sims 4',a.sims]].forEach(([k,v])=>{const d=el('div','item');d.innerHTML=`<strong>${v}/100</strong><small>${k}</small>`;grid.append(d);});g.append(grid);if(project.floors[activeFloor]?.notes){const p=el('p','note',project.floors[activeFloor].notes);g.append(p);}}
   function generate(){project=TS4Engine.generate(TS4Engine.collectSettings());activeFloor=0;renderSummary();renderTabs();renderLegend();renderAudit();drawFloor(project.floors[0]);$('#sheetTitle').textContent=project.settings.projectName;$('#sheetSub').textContent=`${project.settings.style} · ${project.settings.renderStyle} · progettazione su griglia The Sims 4`;}
   function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);}
