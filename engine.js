@@ -186,28 +186,103 @@
     }
     return sides;
   }
+  function blockedIntervals(q,side){
+    const t=q.type;
+    const map={
+      living:{left:[[.06,.62]]},
+      kitchen:{top:[[.12,.92]],left:[[.04,.93]]},
+      bedroom:{top:[[.05,.70]],left:[[.05,.66]],right:[[.60,.95]]},
+      master:{top:[[.05,.70]],left:[[.05,.66]],right:[[.60,.95]]},
+      study:{left:[[.04,.90]]},
+      bath:{top:[[.04,.86]],left:[[.04,.84]],right:[[.08,.84]]},
+      laundry:{top:[[.05,.95]],bottom:[[.05,.95]]},
+      wardrobe:{left:[[.05,.95]],right:[[.05,.95]]},
+      pantry:{left:[[.05,.95]],right:[[.05,.95]]},
+      storage:{left:[[.05,.95]],right:[[.05,.95]]}
+    };
+    return map[t]?.[side]||[];
+  }
+  function intervalOverlap(a1,a2,b1,b2){return Math.max(0,Math.min(a2,b2)-Math.max(a1,b1));}
+  function furniturePenalty(q,side,pos,width){
+    const wall=sideLength(q,side);
+    if(!wall)return 0;
+    const half=Math.min(.22,(width/Math.max(wall,.1))/2+.025);
+    const a=Math.max(0,pos-half),b=Math.min(1,pos+half);
+    let score=0;
+    for(const [i1,i2] of blockedIntervals(q,side)){
+      const ov=intervalOverlap(a,b,i1,i2);
+      if(ov>0)score+=80+ov*180;
+    }
+    return score;
+  }
+  function preferencePenalty(q,pos){
+    if(['bath','wardrobe','laundry','pantry','storage','bedroom','master','study'].includes(q.type)){
+      return Math.min(Math.abs(pos-.16),Math.abs(pos-.84))*16;
+    }
+    if(['living','dining','kitchen','lounge'].includes(q.type))return Math.abs(pos-.5)*4;
+    return 0;
+  }
+  function chooseDoorOnSharedWall(a,b,sw,width){
+    const margin=Math.min(sw.len*.22,Math.max(.65,width/2+.25));
+    const lo=sw.start+margin,hi=sw.start+sw.len-margin;
+    const candidates=hi>lo
+      ? [lo,lo+(hi-lo)*.2,lo+(hi-lo)*.4,(lo+hi)/2,lo+(hi-lo)*.6,lo+(hi-lo)*.8,hi]
+      : [sw.start+sw.len/2];
+    let best={abs:candidates[0],score:Infinity};
+    for(const abs of candidates){
+      const pa=posOnSide(a,sw.aSide,abs),pb=posOnSide(b,sw.bSide,abs);
+      const score=furniturePenalty(a,sw.aSide,pa,width)+furniturePenalty(b,sw.bSide,pb,width)+preferencePenalty(a,pa)+preferencePenalty(b,pb);
+      if(score<best.score)best={abs,score,pa,pb};
+    }
+    return best;
+  }
+  function chooseHinge(q,side,pos){
+    if(['top','bottom'].includes(side)){
+      if(q.type==='kitchen'&&pos<.5)return 'end';
+      return pos<=.5?'start':'end';
+    }
+    return pos<=.5?'start':'end';
+  }
+  function chooseSwing(q,kind){
+    if(['sliding','opening','garage'].includes(kind))return 'none';
+    if(kind==='entry'||kind==='double')return 'inside';
+    if(q.type==='bath'&&(q.w*q.h<27||Math.min(q.w,q.h)<4.8))return 'outside';
+    if(['laundry','pantry','storage'].includes(q.type)&&Math.min(q.w,q.h)<4.5)return 'outside';
+    return 'inside';
+  }
   function enhanceOpenings(f,s){
     const rooms=f.rooms.filter(q=>!q.overlay);
     const doors=[],windows=[];
-    const doorKeys=new Set(), windowKeys=new Set();
-    const byId=id=>rooms.find(q=>q.id===id);
-    const addDoor=(q,side,pos=.5,width=1.2,kind='single',to=null)=>{
+    const doorKeys=new Set(),windowKeys=new Set();
+    const addDoor=(q,side,pos=.5,width=1.2,kind='single',to=null,meta={})=>{
       if(!q||!side)return;
-      const key=[q.id,side,Math.round(pos*20),kind].join('|');
+      const safePos=clamp(pos,.10,.90);
+      const key=[q.id,side,Math.round(safePos*30),kind,to||'ext'].join('|');
       if(doorKeys.has(key))return;
-      doorKeys.add(key);doors.push({roomId:q.id,side,pos:clamp(pos,.12,.88),width,kind,to});
+      doorKeys.add(key);
+      const swing=meta.swing||chooseSwing(q,kind);
+      const hinge=meta.hinge||chooseHinge(q,side,safePos);
+      const clearance=Math.max(0,100-Math.round(furniturePenalty(q,side,safePos,width)));
+      doors.push({roomId:q.id,side,pos:safePos,width,kind,to,swing,hinge,clearance});
     };
     const connect=(a,b,kind='single',width=1.2)=>{
       if(!a||!b)return false;
       const sw=sharedWall(a,b);if(!sw)return false;
-      const abs=sw.start+sw.len/2;
-      addDoor(a,sw.aSide,posOnSide(a,sw.aSide,abs),Math.min(width,Math.max(1,sw.len*.55)),kind,b.id);
+      const actualWidth=Math.min(width,Math.max(1,sw.len*.55));
+      const pick=chooseDoorOnSharedWall(a,b,sw,actualWidth);
+      addDoor(a,sw.aSide,posOnSide(a,sw.aSide,pick.abs),actualWidth,kind,b.id);
       return true;
     };
     const addWindows=(q,side,n,width,kind='standard')=>{
       if(!q||!side||n<1)return;
+      const occupied=doors.filter(d=>d.roomId===q.id&&d.side===side);
       for(let i=0;i<n;i++){
-        const pos=(i+1)/(n+1),key=[q.id,side,i,kind].join('|');
+        let pos=(i+1)/(n+1);
+        for(const d of occupied){
+          const minGap=(width+d.width)/(2*Math.max(sideLength(q,side),1))+.05;
+          if(Math.abs(pos-d.pos)<minGap)pos=clamp(pos+(pos<=.5?-minGap:minGap),.14,.86);
+        }
+        const key=[q.id,side,Math.round(pos*30),kind].join('|');
         if(windowKeys.has(key))continue;
         windowKeys.add(key);windows.push({roomId:q.id,side,pos,width,kind});
       }
@@ -217,7 +292,7 @@
     if(foyer){
       const ex=exteriorSides(foyer,rooms,f.W,f.H);
       const side=ex.includes('bottom')?'bottom':(ex[0]||'bottom');
-      addDoor(foyer,side,.5,foyer.w>5?2:1.5,foyer.w>5?'double':'entry',null);
+      addDoor(foyer,side,.5,foyer.w>5?2:1.5,foyer.w>5?'double':'entry',null,{swing:'inside',hinge:'start'});
     }
 
     const corridor=rooms.find(q=>q.type==='corridor');
@@ -236,31 +311,39 @@
 
     const bedrooms=rooms.filter(q=>['bedroom','master'].includes(q.type));
     for(const bed of bedrooms){
-      const wards=rooms.filter(q=>q.type==='wardrobe').sort((a,b)=>Math.hypot((a.x+a.w/2)-(bed.x+bed.w/2),(a.y+a.h/2)-(bed.y+bed.h/2))-Math.hypot((b.x+b.w/2)-(bed.x+bed.w/2),(b.y+b.h/2)-(bed.y+bed.h/2)));
-      const baths=rooms.filter(q=>q.type==='bath').sort((a,b)=>Math.hypot((a.x+a.w/2)-(bed.x+bed.w/2),(a.y+a.h/2)-(bed.y+bed.h/2))-Math.hypot((b.x+b.w/2)-(bed.x+bed.w/2),(b.y+b.h/2)-(bed.y+bed.h/2)));
-      if(wards[0]&&sharedWall(bed,wards[0]))connect(bed,wards[0],'sliding',1.4);
-      if(baths[0]&&sharedWall(bed,baths[0]))connect(bed,baths[0],'single',1.1);
+      const near=(type)=>rooms.filter(q=>q.type===type).sort((a,b)=>Math.hypot((a.x+a.w/2)-(bed.x+bed.w/2),(a.y+a.h/2)-(bed.y+bed.h/2))-Math.hypot((b.x+b.w/2)-(bed.x+bed.w/2),(b.y+b.h/2)-(bed.y+bed.h/2)))[0];
+      const ward=near('wardrobe'),bath=near('bath');
+      if(ward&&sharedWall(ward,bed))connect(ward,bed,'sliding',1.4);
+      if(bath&&sharedWall(bath,bed))connect(bath,bed,'single',1.1);
     }
 
     const doorless=rooms.filter(q=>!['corridor','foyer','stairs'].includes(q.type)&&!doors.some(d=>d.roomId===q.id));
     for(const q of doorless){
       const old=q.door;
-      if(old)addDoor(q,old.side,.5,q.type==='bath'?1:q.type==='wardrobe'?1.4:1.2,q.type==='wardrobe'?'sliding':'single');
+      if(old){
+        const candidates=[.14,.22,.32,.68,.78,.86,.5];
+        let best={pos:.5,score:Infinity};
+        for(const pos of candidates){
+          const score=furniturePenalty(q,old.side,pos,q.type==='bath'?1:q.type==='wardrobe'?1.4:1.2)+preferencePenalty(q,pos);
+          if(score<best.score)best={pos,score};
+        }
+        addDoor(q,old.side,best.pos,q.type==='bath'?1:q.type==='wardrobe'?1.4:1.2,q.type==='wardrobe'?'sliding':'single');
+      }
     }
 
     for(const q of rooms){
       const ex=exteriorSides(q,rooms,f.W,f.H);
       if(!ex.length)continue;
-      let preferred=ex[0];
+      const preferred=ex[0];
       if(q.type==='living'){const side=ex.includes('bottom')?'bottom':ex[0];addWindows(q,side,2,3,'wide');if(ex.length>1)addWindows(q,ex[1],1,2.4,'wide');}
       else if(q.type==='kitchen'){const side=ex.includes('right')?'right':ex[0];addWindows(q,side,2,2,'standard');}
-      else if(q.type==='dining'||q.type==='lounge'){addWindows(q,preferred,1,2.4,'wide');}
-      else if(q.type==='master'){addWindows(q,preferred,2,2.6,'wide');}
-      else if(q.type==='bedroom'){addWindows(q,preferred,1,2.2,'standard');}
-      else if(q.type==='study'){addWindows(q,preferred,1,2.2,'standard');}
-      else if(q.type==='bath'){addWindows(q,preferred,1,1.2,'privacy');}
-      else if(q.type==='laundry'){addWindows(q,preferred,1,1.2,'privacy');}
-      else if(q.type==='garage'){addWindows(q,preferred,1,1.8,'high');}
+      else if(q.type==='dining'||q.type==='lounge')addWindows(q,preferred,1,2.4,'wide');
+      else if(q.type==='master')addWindows(q,preferred,2,2.6,'wide');
+      else if(q.type==='bedroom')addWindows(q,preferred,1,2.2,'standard');
+      else if(q.type==='study')addWindows(q,preferred,1,2.2,'standard');
+      else if(q.type==='bath')addWindows(q,preferred,1,1.2,'privacy');
+      else if(q.type==='laundry')addWindows(q,preferred,1,1.2,'privacy');
+      else if(q.type==='garage')addWindows(q,preferred,1,1.8,'high');
     }
 
     const terraces=f.exterior.filter(q=>['terrace','patio'].includes(q.type));
@@ -268,12 +351,15 @@
       for(const q of [living,kitchen,...bedrooms].filter(Boolean)){
         const ex=exteriorSides(q,rooms,f.W,f.H);
         const side=ex.includes('bottom')?'bottom':ex.includes('top')?'top':ex[0];
-        if(side&&['living','kitchen','master'].includes(q.type))addDoor(q,side,.76,q.type==='master'?2.2:2.6,'sliding',terraces[0].id);
+        if(side&&['living','kitchen','master'].includes(q.type)){
+          const pos=q.type==='kitchen'?.82:.76;
+          addDoor(q,side,pos,q.type==='master'?2.2:2.6,'sliding',terraces[0].id,{swing:'none'});
+        }
       }
     }
 
     const garage=f.exterior.find(q=>q.type==='garage');
-    if(garage){addDoor(garage,'bottom',.5,Math.max(4,garage.w*.72),'garage',null);}
+    if(garage)addDoor(garage,'bottom',.5,Math.max(4,garage.w*.72),'garage',null,{swing:'none'});
     f.openings={doors,windows};
   }
 
