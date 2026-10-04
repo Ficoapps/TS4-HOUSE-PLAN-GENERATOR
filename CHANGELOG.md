@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Motore automatico per porte e finestre.
+- Porte singole, doppie, scorrevoli, aperture libere e portone garage.
+- Finestre larghe, standard, privacy e alte.
+- Posizionamento delle finestre sulle pareti esterne in base al tipo di locale.
+- Collegamento automatico tra locali adiacenti.
+- Portefinestre verso terrazze e spazi esterni.
+- Rendering planimetrico dedicato per battenti, archi di apertura, scorrevoli e serramenti.
+- Conteggio delle aperture nel riepilogo progetto.
+
+
 ## [v0.4] - 2026-10-04
 
 ### Added
