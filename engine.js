@@ -169,7 +169,7 @@
   }
   function posOnSide(q,side,absolute){
     const origin=(side==='top'||side==='bottom')?q.x:q.y;
-    return clamp((absolute-origin)/sideLength(q,side),.10,.90);
+    return clamp((absolute-origin)/sideLength(q,side),.05,.95);
   }
   function exteriorSides(q,rooms,W,H){
     const eps=.15, sides=[];
@@ -257,7 +257,7 @@
     const doorKeys=new Set(),windowKeys=new Set();
     const addDoor=(q,side,pos=.5,width=1.2,kind='single',to=null,meta={})=>{
       if(!q||!side)return;
-      const safePos=clamp(pos,.10,.90);
+      const safePos=clamp(pos,.06,.94);
       const key=[q.id,side,Math.round(safePos*30),kind,to||'ext'].join('|');
       if(doorKeys.has(key))return;
       doorKeys.add(key);
@@ -393,7 +393,12 @@
       sims:clamp(98-(s.shape==='split'?4:0)-(s.floors>3?2:0),88,99)
     };
     const openingCount=floors.reduce((a,f)=>a+(f.openings?.doors.length||0)+(f.openings?.windows.length||0),0);
-    return {settings:s,floors,meta:{W,H,usable:Math.round(usable),corridorRatio:Math.round(areaRatio*100),openingCount},audit,created:new Date().toISOString()};
+    const allDoors=floors.flatMap(f=>f.openings?.doors||[]);
+    const doorClearanceScore=allDoors.length?Math.round(allDoors.reduce((sum,d)=>{
+      if(['sliding','opening','garage'].includes(d.kind)||d.swing==='outside')return sum+100;
+      return sum+(d.clearance??100);
+    },0)/allDoors.length):100;
+    return {settings:s,floors,meta:{W,H,usable:Math.round(usable),corridorRatio:Math.round(areaRatio*100),openingCount,doorClearanceScore},audit,created:new Date().toISOString()};
   }
 
   global.TS4Engine={collectSettings,generate};
