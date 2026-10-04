@@ -20,8 +20,10 @@ Browser app per generare **planimetrie residenziali arredate e ricostruibili in 
 - Garage, balconi e terrazze.
 - Patio / BBQ, piscina e giardino.
 - Arredo 2D automatico.
-- Porte con battente e arco di apertura.
-- Finestre architettoniche.
+- Sistema architettonico di **porte e aperture**: singole, doppie, scorrevoli, vani aperti e portone garage.
+- **Finestre automatiche sulle pareti esterne**, dimensionate in base al locale.
+- Finestre larghe per soggiorno/master, standard per camere/studio e schermate per bagni/lavanderia.
+- Portefinestre/scorrevoli verso terrazze e spazi esterni quando coerenti con il layout.
 - Pavimenti e materiali differenziati.
 - Stili di rendering: **Tecnica**, **Immobiliare**, **Luxury**.
 - Controlli di qualità distributiva, architettonica, grafica e compatibilità TS4.
@@ -94,7 +96,7 @@ La v0.4 è un **MVP avanzato**. Il progetto è in sviluppo attivo.
 - [ ] balconi e terrazze più evoluti;
 - [ ] quote automatiche complete;
 - [ ] legenda tecnica dettagliata;
-- [ ] più tipologie di porte e finestre;
+- [x] più tipologie di porte e finestre;
 - [ ] libreria arredi più ampia;
 - [ ] controllo più rigoroso degli ingombri;
 - [ ] migliore generazione di corti e patio;
@@ -112,3 +114,17 @@ TS4 House Plan Generator crea **concept planimetrici per The Sims 4**. Non è un
 ## Disclaimer
 
 Questo progetto non è affiliato, sponsorizzato o approvato da Electronic Arts o Maxis. *The Sims* è un marchio dei rispettivi proprietari.
+
+
+## Sviluppo successivo alla v0.4
+
+Sul branch `main` è già presente un affinamento del motore aperture:
+
+- riconoscimento delle pareti esterne;
+- collegamenti porta fra locali adiacenti;
+- ingresso principale dedicato;
+- porte doppie per i principali passaggi della zona giorno;
+- porte scorrevoli per cabine e accessi esterni;
+- portone garage;
+- finestre differenziate per funzione del locale;
+- conteggio totale delle aperture nella scheda progetto.
