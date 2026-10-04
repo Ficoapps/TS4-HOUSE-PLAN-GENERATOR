@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Improved
+- Posizionamento porte in funzione degli arredi e delle zone di passaggio.
+- Selezione automatica della posizione migliore sulla parete condivisa.
+- Scelta automatica del lato cerniera.
+- Apertura interna o esterna in base allo spazio disponibile.
+- Apertura verso l'esterno nei bagni compatti quando migliora la fruibilità.
+- Punteggio dedicato allo spazio di apertura delle porte.
+- Migliore separazione tra porte e finestre sulla stessa parete.
+
+
 ### Added
 - Motore automatico per porte e finestre.
 - Porte singole, doppie, scorrevoli, aperture libere e portone garage.
