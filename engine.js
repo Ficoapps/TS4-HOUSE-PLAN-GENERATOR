@@ -169,7 +169,7 @@
   }
   function posOnSide(q,side,absolute){
     const origin=(side==='top'||side==='bottom')?q.x:q.y;
-    return clamp((absolute-origin)/sideLength(q,side),.16,.84);
+    return clamp((absolute-origin)/sideLength(q,side),.10,.90);
   }
   function exteriorSides(q,rooms,W,H){
     const eps=.15, sides=[];
@@ -190,15 +190,15 @@
     const t=q.type;
     const map={
       living:{left:[[.06,.62]]},
-      kitchen:{top:[[.12,.92]],left:[[.04,.93]]},
-      bedroom:{top:[[.05,.70]],left:[[.05,.66]],right:[[.60,.95]]},
-      master:{top:[[.05,.70]],left:[[.05,.66]],right:[[.60,.95]]},
-      study:{left:[[.04,.90]]},
-      bath:{top:[[.04,.86]],left:[[.04,.84]],right:[[.08,.84]]},
-      laundry:{top:[[.05,.95]],bottom:[[.05,.95]]},
-      wardrobe:{left:[[.05,.95]],right:[[.05,.95]]},
-      pantry:{left:[[.05,.95]],right:[[.05,.95]]},
-      storage:{left:[[.05,.95]],right:[[.05,.95]]}
+      kitchen:{top:[[.12,.80]],left:[[.05,.72]]},
+      bedroom:{top:[[.05,.68]],left:[[.05,.64]],right:[[.62,.94]]},
+      master:{top:[[.05,.68]],left:[[.05,.64]],right:[[.62,.94]]},
+      study:{left:[[.04,.88]]},
+      bath:{top:[[.04,.80]],left:[[.04,.78]],right:[[.08,.78]]},
+      laundry:{top:[[.08,.82]],bottom:[[.08,.82]]},
+      wardrobe:{left:[[.10,.76]],right:[[.10,.76]]},
+      pantry:{top:[[.08,.82]],bottom:[[.08,.82]]},
+      storage:{top:[[.08,.82]],bottom:[[.08,.82]]}
     };
     return map[t]?.[side]||[];
   }
@@ -219,11 +219,12 @@
     if(['bath','wardrobe','laundry','pantry','storage','bedroom','master','study'].includes(q.type)){
       return Math.min(Math.abs(pos-.16),Math.abs(pos-.84))*16;
     }
-    if(['living','dining','kitchen','lounge'].includes(q.type))return Math.abs(pos-.5)*4;
+    if(q.type==='kitchen')return Math.min(Math.abs(pos-.12),Math.abs(pos-.88))*10;
+    if(['living','dining','lounge'].includes(q.type))return Math.abs(pos-.5)*4;
     return 0;
   }
   function chooseDoorOnSharedWall(a,b,sw,width){
-    const margin=Math.min(sw.len*.22,Math.max(.65,width/2+.25));
+    const margin=Math.min(sw.len*.12,Math.max(.52,width/2+.12));
     const lo=sw.start+margin,hi=sw.start+sw.len-margin;
     const candidates=hi>lo
       ? [lo,lo+(hi-lo)*.2,lo+(hi-lo)*.4,(lo+hi)/2,lo+(hi-lo)*.6,lo+(hi-lo)*.8,hi]
@@ -260,9 +261,9 @@
       const key=[q.id,side,Math.round(safePos*30),kind,to||'ext'].join('|');
       if(doorKeys.has(key))return;
       doorKeys.add(key);
-      const swing=meta.swing||chooseSwing(q,kind);
-      const hinge=meta.hinge||chooseHinge(q,side,safePos);
       const clearance=Math.max(0,100-Math.round(furniturePenalty(q,side,safePos,width)));
+      const swing=meta.swing||(q.type==='bath'&&clearance<65?'outside':chooseSwing(q,kind));
+      const hinge=meta.hinge||chooseHinge(q,side,safePos);
       doors.push({roomId:q.id,side,pos:safePos,width,kind,to,swing,hinge,clearance});
     };
     const connect=(a,b,kind='single',width=1.2)=>{
@@ -321,7 +322,7 @@
     for(const q of doorless){
       const old=q.door;
       if(old){
-        const candidates=[.14,.22,.32,.68,.78,.86,.5];
+        const candidates=[.10,.14,.20,.30,.70,.80,.86,.90,.5];
         let best={pos:.5,score:Infinity};
         for(const pos of candidates){
           const score=furniturePenalty(q,old.side,pos,q.type==='bath'?1:q.type==='wardrobe'?1.4:1.2)+preferencePenalty(q,pos);
