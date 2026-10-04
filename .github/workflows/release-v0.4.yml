@@ -1,0 +1,35 @@
+name: Publish v0.4 release
+
+on:
+  push:
+    paths:
+      - ".github/workflows/release-v0.4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stop if release already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.4 >/dev/null 2>&1; then
+            echo "Release v0.4 already exists."
+            exit 0
+          fi
+
+      - name: Build release archive
+        run: |
+          git archive --format=zip --output=TS4-House-Plan-Generator-v0.4.zip HEAD
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.4             TS4-House-Plan-Generator-v0.4.zip             --title "TS4 House Plan Generator v0.4"             --notes-file RELEASE_NOTES_v0.4.md             --latest
