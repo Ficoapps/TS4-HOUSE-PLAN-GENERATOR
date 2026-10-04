@@ -128,3 +128,18 @@ Sul branch `main` è già presente un affinamento del motore aperture:
 - portone garage;
 - finestre differenziate per funzione del locale;
 - conteggio totale delle aperture nella scheda progetto.
+
+
+### Affinamento porte e percorsi su `main`
+
+Il motore ora usa **porte consapevoli degli arredi e dei percorsi**:
+
+- cerca il punto libero migliore lungo la parete condivisa;
+- evita, quando possibile, letto, sanitari, blocchi cucina e armadiature;
+- preferisce aperture laterali nei locali privati e tecnici;
+- assegna automaticamente lato cerniera;
+- sceglie apertura interna o esterna in base allo spazio disponibile;
+- nei bagni compatti può aprire verso l'esterno;
+- porte scorrevoli per cabine armadio e accessi esterni;
+- controllo dedicato dello **spazio di apertura porte** con punteggio 0–100;
+- finestre distanziate dalle porte presenti sulla stessa parete.
