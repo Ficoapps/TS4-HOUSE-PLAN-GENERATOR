@@ -63,7 +63,7 @@
   function openingRoom(f,id){return [...f.rooms,...f.exterior].find(q=>q.id===id);}
   function openingGeom(q,op,S){
     const x=q.x*S,y=q.y*S,w=q.w*S,h=q.h*S;
-    const side=op.side,pos=Math.max(.08,Math.min(.92,op.pos==null?.5:op.pos)),len=Math.max(S*(op.width||1.2),12);
+    const side=op.side,pos=Math.max(.08,Math.min(.92,op.pos==null?0.5:op.pos)),len=Math.max(S*(op.width||1.2),12);
     if(side==='top'||side==='bottom'){
       const cx=x+w*pos,yy=side==='top'?y:y+h;
       return {side:side,cx:cx,cy:yy,x1:cx-len/2,y1:yy,x2:cx+len/2,y2:yy,len:len};
