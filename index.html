@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TS4 House Generator v0.4</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-variant="0">
+  <header class="topbar">
+    <div><h1>TS4 House Generator</h1><p>Professional Floorplan Engine · planimetrie arredate e ricostruibili in The Sims 4</p></div>
+    <div class="badge">v0.4 · NO CC friendly</div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="panel controls">
+      <h2>Progetto</h2>
+      <label>Nome progetto<input id="projectName" value="Villa Contemporanea TS4" /></label>
+      <div class="grid2">
+        <label>Lotto<select id="lotSize"><option>20x15</option><option>20x20</option><option>30x20</option><option>30x30</option><option>40x30</option><option>40x40</option><option>50x40</option><option>50x50</option><option selected>64x64</option></select></label>
+        <label>Stile architettonico<select id="style"><option selected>Moderno contemporaneo</option><option>Villa italiana</option><option>Minimalista</option><option>Mediterraneo</option><option>Industriale</option><option>Ranch</option><option>Giapponese</option><option>Chalet</option><option>Classico</option></select></label>
+      </div>
+      <div class="grid2">
+        <label>Stile planimetria<select id="renderStyle"><option>Tecnica</option><option selected>Immobiliare</option><option>Luxury</option></select></label>
+        <label>Forma<select id="shape"><option value="auto">Automatica</option><option value="rect">Rettangolare</option><option value="l">A L</option><option value="u">A U</option><option value="split" selected>Livelli sfalsati</option></select></label>
+      </div>
+      <div class="grid2">
+        <label>Piani<input id="floors" type="number" min="1" max="4" value="3" /></label>
+        <label>Camere<input id="bedrooms" type="number" min="1" max="8" value="3" /></label>
+      </div>
+      <h3>Ambienti e servizi</h3>
+      <div class="checks">
+        <label><input id="ensuite" type="checkbox" checked> Bagno privato</label>
+        <label><input id="wardrobe" type="checkbox" checked> Cabina armadio</label>
+        <label><input id="study" type="checkbox" checked> Studio</label>
+        <label><input id="laundry" type="checkbox" checked> Lavanderia</label>
+        <label><input id="pantry" type="checkbox" checked> Dispensa</label>
+        <label><input id="openSpace" type="checkbox"> Cucina open space</label>
+        <label><input id="garage" type="checkbox"> Garage</label>
+        <label><input id="balcony" type="checkbox" checked> Balconi / terrazze</label>
+        <label><input id="pool" type="checkbox" checked> Piscina</label>
+        <label><input id="bbq" type="checkbox" checked> Patio / BBQ</label>
+        <label><input id="garden" type="checkbox" checked> Giardino</label>
+        <label><input id="baseGame" type="checkbox" checked> No CC / Base Game</label>
+      </div>
+      <div class="actions primary-actions"><button id="generateBtn" class="primary">Genera planimetria</button><button id="variantBtn">Nuova variante</button></div>
+      <hr>
+      <h3>Salvataggio ed esportazione</h3>
+      <div class="actions"><button id="saveBtn">Salva</button><button id="loadBtn">Carica</button></div>
+      <div class="actions"><button id="exportPngBtn">PNG HD</button><button id="exportSvgBtn">SVG</button></div>
+      <div class="actions"><button id="exportJsonBtn">JSON progetto</button></div>
+      <p class="note">La v0.4 applica zonizzazione giorno/notte/servizi, disimpegni, vano scala verticale, bagni/cabine annessi alle camere, arredo schematico, porte con battente, finestre e materiali. È ottimizzata per The Sims 4 e non sostituisce un progetto edilizio reale.</p>
+    </aside>
+
+    <section class="workspace">
+      <div class="summary" id="summary"></div>
+      <div class="tabs" id="floorTabs"></div>
+      <div class="canvas-wrap">
+        <div class="sheet">
+          <div class="sheet-header"><div><div class="sheet-title" id="sheetTitle">Progetto</div><div class="sheet-sub" id="sheetSub"></div></div><div class="sheet-scale">PIANTA ARREDATA<br>griglia logica TS4</div></div>
+          <svg id="plan" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planimetria generata"></svg>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <section class="guidelines" id="guidelines"></section>
+    </section>
+  </main>
+  <footer><span>TS4 House Generator · v0.4 Professional Floorplan Engine</span><span>Planimetrie arredate · quote in caselle TS4</span></footer>
+  <script src="engine.js"></script><script src="app.js"></script>
+</body>
+</html>
